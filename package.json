@@ -1,0 +1,15 @@
+{
+  "name": "ytdl",
+  "version": "0.0.0",
+  "private": true,
+  "description": "YouTube 下載 CLI：-type mp3/mp4 與 -qtype 1~5 畫質/音質等級，包裝 yt-dlp + ffmpeg",
+  "scripts": {
+    "dev": "go run .",
+    "test": "go test ./... -count=1",
+    "build": "go build -o bin/ytdl .",
+    "deploy": "go install .",
+    "lint": "gofmt -l . && go vet ./...",
+    "ci": "npm run lint && npm run test && npm run build",
+    "clean": "rm -rf bin"
+  }
+}
