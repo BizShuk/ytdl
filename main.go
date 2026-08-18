@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/bizshuk/ytdl/pkg/download"
@@ -15,7 +16,6 @@ import (
 func main() {
 	mediaType := flag.String("type", string(download.TYPE_DEFAULT), "output format: mp3 or mp4")
 	quality := flag.Int("qtype", download.QUALITY_DEFAULT, "quality tier 1 (lowest) to 5 (highest)")
-	outputDir := flag.String("out", ".", "directory to write the downloaded file into")
 	flag.Usage = usage
 
 	flag.Parse()
@@ -24,10 +24,30 @@ func main() {
 		os.Exit(2)
 	}
 
-	if err := run(*mediaType, *quality, *outputDir, flag.Args()); err != nil {
+	outputDir, err := dataDir()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "ytdl: %v\n", err)
 		os.Exit(1)
 	}
+
+	if err := run(*mediaType, *quality, outputDir, flag.Args()); err != nil {
+		fmt.Fprintf(os.Stderr, "ytdl: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// dataDir returns ~/.config/ytdl/data, creating it if absent. Downloads
+// always land here — there is no flag to redirect them elsewhere.
+func dataDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve home directory: %w", err)
+	}
+	dir := filepath.Join(home, ".config", "ytdl", "data")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("create data directory: %w", err)
+	}
+	return dir, nil
 }
 
 func run(mediaTypeFlag string, quality int, outputDir string, urls []string) error {

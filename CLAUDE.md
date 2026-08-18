@@ -34,6 +34,9 @@ ytdl/
   進度與橫幅走 stderr（`--quiet --progress` 讓 yt-dlp 把進度改寫到
   stderr）。與 video-utils 的 stdout-only-paths 慣例一致，可直接
   `$(ytdl ...)` 取路徑。
+- 輸出目錄固定為 `~/.config/ytdl/data`（不存在則自動建立），沒有 `-out`
+  旗標可以改路徑：符合 unified interface 的 `data/` 慣例，也避免下載檔
+  散落在使用者當下的工作目錄。
 - 預設 `--no-playlist`：playlist URL 只抓所指向的單支影片，行為可預期。
 - `signal.NotifyContext` 綁 `exec.CommandContext`，Ctrl-C 會連帶終止
   yt-dlp 子行程，不留孤兒。

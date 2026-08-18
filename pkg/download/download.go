@@ -17,6 +17,15 @@ import (
 const (
 	YT_DLP_BIN = "yt-dlp"
 	FFMPEG_BIN = "ffmpeg"
+
+	// YOUTUBE_PLAYER_CLIENTS orders the YouTube player clients yt-dlp asks for
+	// media URLs. web_embedded leads because the clients yt-dlp picks by default
+	// now return SABR-only or PO-Token-bound streams whose media URLs answer
+	// HTTP 403. Order matters: the leading client wins ties during format
+	// sorting, and "default" trails as the fallback for videos web_embedded
+	// cannot serve. Extractor args are namespaced, so non-YouTube sites ignore
+	// this entirely.
+	YOUTUBE_PLAYER_CLIENTS = "youtube:player_client=web_embedded,default"
 )
 
 // Request is one URL to fetch at one media type and quality tier.
@@ -54,6 +63,7 @@ func (r Request) args(pathFile string) []string {
 		"--newline",
 		"--print-to-file", "after_move:filepath", pathFile,
 		"--output", filepath.Join(outputDir, "%(title)s.%(ext)s"),
+		"--extractor-args", YOUTUBE_PLAYER_CLIENTS,
 	}
 	args = append(args, formatArgs(r.Type, r.Quality)...)
 	return append(args, r.URL)
