@@ -36,14 +36,23 @@ func main() {
 	}
 }
 
-// dataDir returns ~/.config/ytdl/data, creating it if absent. Downloads
-// always land here — there is no flag to redirect them elsewhere.
-func dataDir() (string, error) {
+// dataDirPath returns the absolute ~/.config/ytdl/data path without touching
+// the filesystem, so usage text can name the real directory.
+func dataDirPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home directory: %w", err)
 	}
-	dir := filepath.Join(home, ".config", "ytdl", "data")
+	return filepath.Join(home, ".config", "ytdl", "data"), nil
+}
+
+// dataDir returns the data directory, creating it if absent. Downloads always
+// land here — there is no flag to redirect them elsewhere.
+func dataDir() (string, error) {
+	dir, err := dataDirPath()
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("create data directory: %w", err)
 	}
@@ -84,5 +93,16 @@ func usage() {
 	fmt.Fprintf(out, "\nQuality tiers (-qtype), lowest to highest:\n")
 	fmt.Fprintf(out, "  mp4 (max resolution)  %s\n", download.QualityTable(download.TYPE_MP4))
 	fmt.Fprintf(out, "  mp3 (audio bitrate)   %s\n", download.QualityTable(download.TYPE_MP3))
-	fmt.Fprintf(out, "\nStdout carries the downloaded file path; progress goes to stderr.\n")
+	fmt.Fprintf(out, "\nOutput directory (fixed): %s\n", displayDataDir())
+	fmt.Fprintf(out, "Stdout carries the downloaded file path; progress goes to stderr.\n")
+}
+
+// displayDataDir renders the download directory for help text, falling back to
+// the tilde form when the home directory cannot be resolved.
+func displayDataDir() string {
+	dir, err := dataDirPath()
+	if err != nil {
+		return "~/.config/ytdl/data"
+	}
+	return dir
 }
