@@ -1,6 +1,1 @@
 # README.todo
-
-- [ ] 升級本機 yt-dlp (pip install -U yt-dlp) 後重跑 mp4 分級 smoke test；
-      現況受 SABR-only 實驗限制只取得 360p，見
-      docs/memory/2026-08-12-sabr-format-ceiling.md
-- [ ] mp3 分級已實測 (qtype 1 = 64 kbps)，補 qtype 5 = 320 kbps 實測
