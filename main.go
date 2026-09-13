@@ -3,17 +3,37 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
+	"github.com/bizshuk/ytdl/pkg/config"
 	"github.com/bizshuk/ytdl/pkg/download"
+	"github.com/bizshuk/ytdl/pkg/tui"
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "config":
+			if err := runConfig(os.Args[2:], os.Stdout, os.Stderr); err != nil {
+				fmt.Fprintf(os.Stderr, "ytdl config: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "m", "monitor":
+			if err := runMonitor(os.Args[2:], os.Stderr); err != nil {
+				fmt.Fprintf(os.Stderr, "ytdl monitor: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+	}
+
 	mediaType := flag.String("type", string(download.TYPE_DEFAULT), "output format: mp3 or mp4")
 	quality := flag.Int("qtype", download.QUALITY_DEFAULT, "quality tier 1 (lowest) to 5 (highest)")
 	flag.Usage = usage
@@ -24,7 +44,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	outputDir, err := dataDir()
+	outputDir, err := config.EnsureDataDir()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ytdl: %v\n", err)
 		os.Exit(1)
@@ -36,27 +56,51 @@ func main() {
 	}
 }
 
-// dataDirPath returns the absolute ~/.config/ytdl/data path without touching
-// the filesystem, so usage text can name the real directory.
-func dataDirPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve home directory: %w", err)
+func runConfig(args []string, stdout io.Writer, stderr io.Writer) error {
+	configFlags := flag.NewFlagSet("config", flag.ContinueOnError)
+	configFlags.SetOutput(stderr)
+	configFlags.Usage = func() {
+		fmt.Fprintf(stderr, "Usage: ytdl config\n\nShow config folder path.\n")
 	}
-	return filepath.Join(home, ".config", "ytdl", "data"), nil
+	if err := configFlags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+	if configFlags.NArg() > 0 {
+		return fmt.Errorf("unexpected argument: %s", configFlags.Arg(0))
+	}
+
+	dir, err := config.EnsureDir()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(stdout, dir)
+	return nil
 }
 
-// dataDir returns the data directory, creating it if absent. Downloads always
-// land here — there is no flag to redirect them elsewhere.
-func dataDir() (string, error) {
-	dir, err := dataDirPath()
+func runMonitor(args []string, stderr io.Writer) error {
+	monitorFlags := flag.NewFlagSet("monitor", flag.ContinueOnError)
+	monitorFlags.SetOutput(stderr)
+	monitorFlags.Usage = func() {
+		fmt.Fprintf(stderr, "Usage: ytdl monitor (alias: ytdl m)\n\nInteractive TUI to browse downloaded files.\n")
+	}
+	if err := monitorFlags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+	if monitorFlags.NArg() > 0 {
+		return fmt.Errorf("unexpected argument: %s", monitorFlags.Arg(0))
+	}
+
+	dir, err := config.EnsureDataDir()
 	if err != nil {
-		return "", err
+		return err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("create data directory: %w", err)
-	}
-	return dir, nil
+	return tui.Run(dir)
 }
 
 func run(mediaTypeFlag string, quality int, outputDir string, urls []string) error {
@@ -88,7 +132,13 @@ func run(mediaTypeFlag string, quality int, outputDir string, urls []string) err
 
 func usage() {
 	out := flag.CommandLine.Output()
-	fmt.Fprintf(out, "Usage: ytdl [flags] <url>...\n\nFlags:\n")
+	fmt.Fprintf(out, "Usage: ytdl [flags] <url>...\n")
+	fmt.Fprintf(out, "       ytdl config\n")
+	fmt.Fprintf(out, "       ytdl monitor (alias: ytdl m)\n\n")
+	fmt.Fprintf(out, "Commands:\n")
+	fmt.Fprintf(out, "  config                show config folder path\n")
+	fmt.Fprintf(out, "  monitor (m)           show downloaded list under config dir/data\n\n")
+	fmt.Fprintf(out, "Flags:\n")
 	flag.PrintDefaults()
 	fmt.Fprintf(out, "\nQuality tiers (-qtype), lowest to highest:\n")
 	fmt.Fprintf(out, "  mp4 (max resolution)  %s\n", download.QualityTable(download.TYPE_MP4))
@@ -100,7 +150,7 @@ func usage() {
 // displayDataDir renders the download directory for help text, falling back to
 // the tilde form when the home directory cannot be resolved.
 func displayDataDir() string {
-	dir, err := dataDirPath()
+	dir, err := config.DataDir()
 	if err != nil {
 		return "~/.config/ytdl/data"
 	}

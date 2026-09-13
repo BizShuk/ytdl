@@ -10,3 +10,5 @@
 | `remux`            | 不重新編碼、僅更換容器（mp4）；與 mp3 的 transcode（重新編碼）不同         |
 | `output contract`  | stdout 只輸出檔案路徑、其餘訊息一律 stderr 的規約                           |
 | `runtime check`    | 下載前確認 `yt-dlp` 與 `ffmpeg` 存在於 `PATH` 的前置檢查                    |
+| `config subcommand`| `ytdl config`：輸出設定目錄絕對路徑（固定於 `~/.config/ytdl`）之子命令       |
+| `monitor subcommand`| `ytdl m` / `ytdl monitor`：互動式 Bubble Tea TUI 瀏覽下載完成清單之子命令   |
